@@ -4,6 +4,9 @@
 # BUILD: docker build --rm -t puckel/docker-airflow .
 # SOURCE: https://github.com/puckel/docker-airflow
 
+
+# NOTE FROM RYAN: This Dockerfile was very largely adapted from puckels great work in the docker-airflow
+# repo in github. Needed to customize for scraping and importing private repos.
 FROM python:3.7
 LABEL maintainer="Puckel_"
 
@@ -17,6 +20,8 @@ ARG AIRFLOW_USER_HOME=/usr/local/airflow
 ARG AIRFLOW_DEPS=""
 ARG PYTHON_DEPS=""
 ENV AIRFLOW_HOME=${AIRFLOW_USER_HOME}
+
+# added by Ryan
 ARG CI_USER_TOKEN
 RUN echo "machine github.com\n  login $CI_USER_TOKEN\n" > ~/.netrc
 
@@ -63,8 +68,12 @@ RUN set -ex \
     && pip install pyasn1 \
     && pip install apache-airflow[crypto,celery,postgres,hive,jdbc,mysql,ssh${AIRFLOW_DEPS:+,}${AIRFLOW_DEPS}]==${AIRFLOW_VERSION} \
     && pip install 'redis==3.2' \
+
+    # added by Ryan
     && pip install -e git+https://github.com/rcarroll901/python-odyssey-scraper#egg=odyssey_scraper \
     && pip install -e git+https://github.com/rcarroll901/jail_scraper@airflow#egg=jail_scraper \
+    && pip install -e git+https://github.com/csci-e-29/2020sp-csci-utils-rcarroll901#egg=csci_utils \
+
     && if [ -n "${PYTHON_DEPS}" ]; then pip install ${PYTHON_DEPS}; fi \
     && apt-get purge --auto-remove -yqq $buildDeps \
     && apt-get autoremove -yqq --purge \
@@ -77,14 +86,14 @@ RUN set -ex \
         /usr/share/doc \
         /usr/share/doc-base
 
-# bugfix for new version of SQLAlchemy and Airflow
+# Added by Ryan: bugfix for new version of SQLAlchemy and Airflow
 RUN pip uninstall -y SQLAlchemy && pip install SQLAlchemy==1.3.15
 COPY scripts/entrypoint.sh /entrypoint.sh
 COPY airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg
 
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}
 
-# For scraping
+# Added by Ryan, adapted from Dockerfile for Selenium image
 # install google chrome
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
 RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
@@ -99,6 +108,9 @@ RUN unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
 # set display port to avoid crash
 ENV DISPLAY=:99
 
+# puckel used requirements.txt in his docker setup which entrypoint.sh uses and is not straightforward
+# to change to pipenv environment since entrypoint below is needed to run webserver and scheduler.
+# (in other words, can't use "pipenv run" as entrypoint)
 COPY ./requirements.txt ${AIRFLOW_USER_HOME}/requirements.txt
 RUN pip install -r ${AIRFLOW_USER_HOME}/requirements.txt
 
