@@ -12,14 +12,15 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.models import Variable
 
 # custom packages
-from csci_utils.airflow import PythonIdempatomicFileOperator, requires
-from jail_scraper.airflow_scraper import main
+from submodules.operator import PythonIdempatomicFileOperator
+from submodules.task import requires
+from jail_scraper.airflow_scraper import main as scrape_jail_website
 from odyssey_scraper.smartsearch import SmartSearchScraper
 
 SCRAPE_ROOT = "data/scrapes/" + datetime.today().strftime("%m-%d-%Y") + "/"
 
 def scrape_jail(output_path, test):
-    main(scrape_dir=output_path, test = test)
+    scrape_jail_website(scrape_dir=output_path, test = test)
     return output_path
 
 def check_jail_profiles(output_path, **kwargs):
@@ -102,7 +103,7 @@ def upload_data(**kwargs):
 default_args = {
     'owner': 'airflow',
     'start_date': dt.datetime(2020, 4, 30, 16, 00, 00),
-    'concurrency': 1,
+    'concurrency': int(Variable.get("concurrency", default_var=1)),
     'retries': 0
 }
 
@@ -127,6 +128,8 @@ upload = PythonOperator(task_id='upload_data',
                         python_callable=upload_data,
                         dag=dag)
 
+
+# pull the variable from Airflow (which was set in previous task)
 num_tasks = int(Variable.get("num_odyssey_scraping_tasks", default_var=1))
 for i in range(num_tasks):
     odyssey_scraper = PythonIdempatomicFileOperator(task_id='odyssey_scraper_'+str(i),
