@@ -17,14 +17,26 @@ from submodules.task import requires
 from jail_scraper.airflow_scraper import main as scrape_jail_website
 from odyssey_scraper.smartsearch import SmartSearchScraper
 
-SCRAPE_ROOT = "data/scrapes/" + datetime.today().strftime("%m-%d-%Y") + "/"
 
 def scrape_jail(output_path, test):
+    """
+    This task scrapes the entirety of this website and puts it into multiple files that correspond
+    to our normalized database schema. These files will be uploaded to the database after we check
+    if they already have a profile
+
+    """
     scrape_jail_website(scrape_dir=output_path, test = test)
     return output_path
 
 def check_jail_profiles(output_path, **kwargs):
+    """
+    In production, this task will check the list received from the scrape_jail task to see who
+    already has a profile in our database. For those who do not, it will produce a list, and it will
+    then divide that list among the appropriate amount of workers via csv files.
 
+    To keep our dag simple for the final project, I am simply dividing tasks up among the workers
+    and not checking their status in the database
+    """
     # load filepaths from required task
     reqs = requires('scrape_jail', **kwargs)
     logging.info('Requirements:', str(reqs))
@@ -58,7 +70,13 @@ def check_jail_profiles(output_path, **kwargs):
         logging.info(f"wrote todo_{x}")
 
     # set variable in Airflow (stored in meta-db) to use in constructing dynamic DAG later
-    Variable.set('num_odyssey_scraping_tasks', str(num_tasks))
+    Variable.set('num_odyssey_scraping_tasks', num_tasks)
+
+    # set variable that controls concurrency (basically concurrency proportial to percentage of scrapes up to 1000)
+    max_concurrency = os.cpu_count() - 1
+    concurrency = math.ceil(max_concurrency * num_tasks/1000) if num_tasks/1000 < 1 else max_concurrency
+    Variable.set('concurrency', concurrency)
+
     return 'Complete'
 
 def scrape_odyssey(index, output_path, **kwargs):
@@ -86,6 +104,7 @@ def scrape_odyssey(index, output_path, **kwargs):
         justice_history = scr.query_name_dob(name, dob, get_rni=True)
         for case in justice_history.case_grid_list():
             # combine all a person's cases into a list of lists (instead of a list of list of lists)
+            # to get one charge per row
             total_cases += case
     scr.quit()
 
@@ -96,8 +115,11 @@ def scrape_odyssey(index, output_path, **kwargs):
     return 'Complete'
 
 
-def upload_data(**kwargs):
-    # dummy task for "uploading data"
+def upload_data():
+    """
+    Dummy task to fake upload data
+
+    """
     pass
 
 default_args = {
@@ -113,17 +135,19 @@ dag =  DAG('jail_scraper_dag',
          )
 
 
+
 jail_scraper = PythonIdempatomicFileOperator(task_id='scrape_jail',
                                         python_callable=scrape_jail,
-                                        output_pattern = SCRAPE_ROOT + "jail_scrape/",
+                                        output_pattern = "data/scrapes/{today_date}/jail_scrape/",
                                         op_kwargs={'test':True},
                                         dag = dag)
 
 check_profiles = PythonIdempatomicFileOperator(task_id='check_profiles',
                                             python_callable=check_jail_profiles,
-                                            output_pattern = SCRAPE_ROOT + "to_do/",
+                                            output_pattern = "data/scrapes/{today_date}/to_do/",
                                             provide_context=True,
                                             dag = dag)
+
 upload = PythonOperator(task_id='upload_data',
                         python_callable=upload_data,
                         dag=dag)
@@ -133,7 +157,7 @@ upload = PythonOperator(task_id='upload_data',
 num_tasks = int(Variable.get("num_odyssey_scraping_tasks", default_var=1))
 for i in range(num_tasks):
     odyssey_scraper = PythonIdempatomicFileOperator(task_id='odyssey_scraper_'+str(i),
-                                                    output_pattern = SCRAPE_ROOT + "worker_{index}/cases.csv",
+                                                    output_pattern = "data/scrapes/{today_date}/worker_{index}/cases.csv",
                                                     dag = dag,
                                                     python_callable=scrape_odyssey,
                                                     provide_context=True,
