@@ -26,11 +26,9 @@ services:
       - ODYSSEY_USER
       - ODYSSEY_PASS
     volumes:
-      - ./dags:/usr/local/airflow/dags
-      - ./data:/usr/local/airflow/data
+      - ./airflow/dags:/usr/local/airflow/dags
+      - .airflow/data:/usr/local/airflow/data
       - /dev/shm:/dev/shm
-      # Uncomment to include custom plugins
-      # - ./plugins:/usr/local/airflow/plugins
     ports:
       - "8080:8080"
     command: webserver

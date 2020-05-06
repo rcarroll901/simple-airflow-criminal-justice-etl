@@ -88,8 +88,8 @@ RUN set -ex \
 
 # Added by Ryan: bugfix for new version of SQLAlchemy and Airflow
 RUN pip uninstall -y SQLAlchemy && pip install SQLAlchemy==1.3.15
-COPY scripts/entrypoint.sh /entrypoint.sh
-COPY airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg
+COPY entrypoint.sh /entrypoint.sh
+COPY airflow/airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg
 
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}
 
@@ -111,7 +111,7 @@ ENV DISPLAY=:99
 # puckel used requirements.txt in his docker setup which entrypoint.sh uses and is not straightforward
 # to change to pipenv environment since entrypoint below is needed to run webserver and scheduler.
 # (in other words, can't use "pipenv run" as entrypoint)
-COPY ./requirements.txt ${AIRFLOW_USER_HOME}/requirements.txt
+COPY requirements.txt ${AIRFLOW_USER_HOME}/requirements.txt
 RUN pip install -r ${AIRFLOW_USER_HOME}/requirements.txt
 
 EXPOSE 5000 8080 5555 8793
