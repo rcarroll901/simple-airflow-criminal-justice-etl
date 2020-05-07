@@ -1,5 +1,6 @@
 import os
 
+
 def requires(task_id, **kwargs):
     """
     Uses Airflow's Xcom to pull in return value from another task
@@ -22,7 +23,7 @@ def requires(task_id, **kwargs):
 
     # Use Xcom to pull in return value from provided task_id.
     # Despite it being ugly, this is actually the standard/official way of doing it :(
-    output_path = kwargs['ti'].xcom_pull(task_ids=task_id)
+    output_path = kwargs["ti"].xcom_pull(task_ids=task_id)
 
     # if output was directory, create a key-value pair for each file in directory
     if output_path.endswith(os.sep):
@@ -38,7 +39,3 @@ def requires(task_id, **kwargs):
         req_dict[name] = output_path
 
     return req_dict
-
-
-
-
