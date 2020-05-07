@@ -139,23 +139,26 @@ simply just not "returned".
 
 ## Implementation: Mini-Criminal Justice Scraping Pipeline
 
+**source code:** `airflow/dags/jail_scraper_dag.py`
+**tests:** `airflow/dags/test_dag.py`
+
 #### Preface
 
-Goal: Get criminal history information on people who are incarcerated pretrial in Shelby County, TN. 
+**Goal:** Get criminal history information on people who are incarcerated pretrial in Shelby County, TN. 
 First, we want to scrape the jail population, and then use their name and dob to search them in the
 larger database which includes all past court cases (that haven't been expunged).
 
-Why: I am going to take this data and implement a django web app which visualizes various stats about 
+**Why:** I am going to take this data and implement a django web app which visualizes various stats about 
 recidivism, length of stay pretrial, etc... 
 
-Note: The portals that are scraped in this pipeline are both completely public information. Just one of 
+**Note:** The portals that are scraped in this pipeline are both completely public information. Just one of 
 them requires registration (which doesn't even have a terms of service...), so I have set up dummy 
 credentials if anyone wants to poke around. Also, I keep these repos private because I don't want someone using this info
 against any of the people incarcerated. I am happy to invite you as a collaborator on the repos so 
 so that you can run this pipeline as long as you promise not to misuse it (and as long as you promise
 not to judge how ugly the code is. They are relics from a long time ago.)
 
-Data:
+#### Data:
 * [Jail Population Data](https://imljail.shelbycountytn.gov/IML): Just hit search without putting
 anything in the query.
 * [Criminal History Data](https://odysseyidentityprovider.tylerhost.net/idp/account/signin?ReturnUrl=%2fidp%2fissue%2fwsfed%3fwa%3dwsignin1.0%26wtrealm%3dhttps%253a%252f%252fcjs.shelbycountytn.gov%252fCJS%252f%26wctx%3drm%253d0%2526id%253dpassive%2526ru%253d%25252fCJS%25252fAccount%25252fLogin%26wct%3d2019-04-10T16%253a27%253a35Z%26wauth%3durn%253a74&wa=wsignin1.0&wtrealm=https%3a%2f%2fcjs.shelbycountytn.gov%2fCJS%2f&wctx=rm%3d0%26id%3dpassive%26ru%3d%252fCJS%252fAccount%252fLogin&wct=2019-04-10T16%3a27%3a35Z&wauth=urn%3a74):
