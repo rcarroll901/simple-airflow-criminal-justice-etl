@@ -23,7 +23,6 @@ def scrape_jail(output_path, test):
     This task scrapes the entirety of this website and puts it into multiple files that correspond
     to our normalized database schema. These files will be uploaded to the database after we check
     if they already have a profile
-
     """
     scrape_jail_website(scrape_dir=output_path, test = test)
     return output_path
@@ -37,6 +36,7 @@ def check_jail_profiles(output_path, **kwargs):
     To keep our dag simple for the final project, I am simply dividing tasks up among the workers
     and not checking their status in the database
     """
+
     # load filepaths from required task
     reqs = requires('scrape_jail', **kwargs)
     logging.info('Requirements:', str(reqs))
@@ -80,6 +80,13 @@ def check_jail_profiles(output_path, **kwargs):
     return 'Complete'
 
 def scrape_odyssey(index, output_path, **kwargs):
+    """
+    This task represents a single scraper which grabs a "to do" list of people to scrape from the
+    previous task, logs into Odyssey Criminal Justice Portal, scrapes each persons information,
+    and then logs it into csv files.
+
+    :param index: the ID number of the worker (which corresponds to the list it reads)
+    """
 
     logging.info(f'running scraper {index}')
 
@@ -118,7 +125,6 @@ def scrape_odyssey(index, output_path, **kwargs):
 def upload_data():
     """
     Dummy task to fake upload data
-
     """
     pass
 
@@ -154,6 +160,9 @@ upload = PythonOperator(task_id='upload_data',
 
 
 # pull the variable from Airflow (which was set in previous task)
+# wrapping this in a subdag operator will be best moving forward and allows us to adjust the
+# concurrency of these scrapers mid-dag_run. Without SubDagOperator, we cannot control concurrency
+# after the dag is instantiated
 num_tasks = int(Variable.get("num_odyssey_scraping_tasks", default_var=1))
 for i in range(num_tasks):
     odyssey_scraper = PythonIdempatomicFileOperator(task_id='odyssey_scraper_'+str(i),
