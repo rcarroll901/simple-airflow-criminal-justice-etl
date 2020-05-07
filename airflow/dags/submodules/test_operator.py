@@ -12,12 +12,6 @@ from submodules.task import requires
 
 TEST_DAG_ID = 'test_my_custom_operator'
 
-def mock_func(output):
-    # function that allows me to flexibly mock a function and return whatever I want
-    def wrapped(*args, **kwargs):
-        return output
-    return wrapped
-
 class PythonIdempatomicFileOperatorTest_Idempotent(unittest.TestCase):
     def f(self, output_path):
         with open(output_path, 'a+') as fout:
@@ -91,40 +85,3 @@ class PythonIdempatomicFileOperatorTest_Atomic(unittest.TestCase):
             self.assertEqual(result, None) # make sure no path is returned
 
         self.assertFalse(os.path.exists(output_path)) # no partially written file
-
-
-class PythonIdempatomicFileOperatorTest_Requires(unittest.TestCase):
-
-    def req_test(self, req_path, expected_result):
-        # need to mock TaskInstance since Xcom does not "work" in test mode
-        requirement_path = req_path
-
-        ti = mock.Mock()
-        ti.xcom_pull.return_value = requirement_path
-        kwargs = {'ti': ti}
-        result = requires('test', **kwargs)
-        self.assertEqual(result, expected_result)
-
-    def test_req_file(self):
-        req_path = 'foo/bar/test.txt'
-        expected_result = {'test': req_path}
-        self.req_test(req_path, expected_result)
-
-    def test_requires_file(self):
-        # need to mock TaskInstance since Xcom does not "work" in test mode
-        requirement_path = 'foo/bar/test.txt'
-
-        ti = mock.Mock()
-        ti.xcom_pull.return_value = requirement_path
-        kwargs = {'ti': ti}
-        result = requires('test', **kwargs)
-        self.assertEqual(result, {'test': requirement_path})
-
-    def test_requires_dir(self):
-        with TemporaryDirectory() as tempdir:
-            path_1 = f'{tempdir}/file_1.txt'
-            path_2 = f'{tempdir}/file_2.txt'
-            open(path_1, 'w')
-            open(path_2, 'w')
-            expected_result = {'file_1': path_1, 'file_2': path_2}
-            self.req_test(tempdir + '/', expected_result)
