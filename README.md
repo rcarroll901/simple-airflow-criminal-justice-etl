@@ -27,7 +27,8 @@ Overview Video: [Final Project - Overview.mp4](https://drive.google.com/open?id=
 
 ## PythonIdempatomicFileOperator
 
-**source code:** `airflow/dags/submodules/task.py`
+**source code:** `airflow/dags/submodules/operator.py`
+**tests:** `airflow/dags/submodules/test_operator.py`
 
 From the user experience, implementing the `PythonIdempatomicFileOperator` is almost identical to 
 implementing the plain `PythonOperator`:
@@ -88,6 +89,7 @@ behave idempotently and atomically.
 ## requires()
 
 **source code:** `airflow/dags/submodules/task.py`
+**tests:** `airflow/dags/submodules/test_task.py`
 
 If we are implementing a data pipeline, we will most likely be writing to and reading from a series of
 files, databases, etc... as we move and shape that data. Airflow's flexibility does not have an 
@@ -184,28 +186,34 @@ Airflow up and running. Much of the base code in the Dockerfile and docker-compo
 but I did make significant adjustments to make everything work. Regardless, I would have never been 
 able to implement the `entrypoint.sh` bash script without puckel's work though. The parts for Selenium
 webdriver were also derived from the Selenium image's Dockerfile, but I actually wrote a lot of it
-before finding their code. They just did it better and this isn't a Docker course :)
+before finding their code. They just did it better and this isn't a Docker course :) I did have to do
+significant work to get pipenv to work with docker-airflow, since it natively worked with a 
+requirements.txt file. There were some subtleties with dealing with installing `psycopg2` package
+which are well documented online but were difficult to implement in a Dockerfile that the author
+clearly had a much deeper knowledge than me. 
 
 
 #### About the DAG
 
 As summarized before, this dynamic DAG was meant to solve the problem of a scraper failing (which they inevitably
 do). By breaking the task of scraping information on 3000 people (max) which can take over 10 hours easily, 
-we significantly offset the cost of failure, since when we re-run the dag after failure, it will skip 
+we significantly offset the cost of failure, since when we re-run the dag after that failure, it will skip 
 all the tasks that it has already completed and pick up where it left off. 
 
 I also want the ability to scale the number of concurrent workers dynamically in order to reduce
-the load on the website when it is unecessary and to increase the load when I'm worried the 
+the load on the website when it is unnecessary and to increase the load when I'm worried the 
 scrapers will not have enough time to finish the job. I decided to change directions to focus on 
-the new operator before I implemented this feature. The current DAG is dynamic, but the concurrency
-is defined at the instantiation of the DAG meaning that it cannot be changed after the DAG runs.
+the new operator before I implemented this feature. The current DAG is dynamic in structure, but the concurrency
+is defined at the instantiation of the DAG, meaning that it cannot be changed after the DAG runs.
 To mitigate this, I will use a SubDagOperator to scale the `odyssey_scraper` tasks which will 
-allow me to set the concurrency when that task is run. 
+allow me to set the concurrency when those dynamic scraping tasks are kicked off, and I am confident
+that it will work straightforwardly. 
 
 In terms of dynamism, Airflow is very interesting, because the scheduler is "filling the DagBag" so
 frequently (every 20 seconds or so). This results in a very dynamic -- maybe too dynamic -- workflow, 
-because if I change the code for a downstream task *while the DAG is already running*, it will actually 
-run the updated code *in that same dag run*. Therefore, I need to be intentional about when I push code. 
+because if the code is changed for a downstream task *while the DAG is already running*, it will actually 
+run the updated code *in that same dag run* when it gets to that downstream task. Therefore, I need 
+to be intentional about when to push code. 
 
 #### Deployment
 
@@ -246,10 +254,12 @@ def try_again_if_timeout(func):
 ```
 
 This made my code significantly more clean without refactoring almost any code. 
+
+Also, less significantly, I also wrote a version of our original `atomic_write` form Pset1 except for
+directories. The idea of using a directory did not seem to mesh with inheriting from `atomicwrites`
+package, so I just used the more straightforward approach. It is defined in my `csci-utils`.
+
 #### The Future
-* Implement pipenv instead of requirements.txt: docker-airflow has the use of requirements.txt hardcoded into the structure of the ENTRYPOINT,
-and I do not know bash well enough to risk messing it up. Docker already took a large amout of time to get set up correctly for various reasons
-(let's just say that I learned a lot), so I put it off since Docker is already the most reproducible environment that we can get. 
 * Salted Graph: The PythonIdempatomicFileOperator is prime for implementing a salted graph in Airflow.
 Really, all one has to do is inherit and overwrite the `self.get_file_path` method. Additionally, one could 
 use an `@version(2.1.1)` decorator such as 
