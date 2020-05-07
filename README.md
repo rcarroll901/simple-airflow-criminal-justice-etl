@@ -20,7 +20,9 @@ Instead, my final project implements and showcases a new operator --  `PythonIde
 Below are my powerpoint presentation and videos which give varying levels of insight into my project and results. I had a lot to discuss so I separated the Intro to Airflow/Motivation parts for my project into an "Intro Video" in case you need more context, but the preface video should not be required to understand what I'm doing in the "real" project video. 
 
 PowerPoint: [Final Project - Presentation.pdf](https://drive.google.com/open?id=1KWzkc_oH4y3ZZtKfdKIHQnIiEJXi9ey-)
+
 Intro Video (Optional): [Final Project - Intro to Airflow and Context.mp4](https://drive.google.com/open?id=1DybmV_X64INPTUr6kPCcA9N7a1EOfzAe)
+
 Overview Video: [Final Project - Overview.mp4](https://drive.google.com/open?id=1-oNeSJOUFifrcbP0DT5zhbx50xvYqQLM)
 
 ## PythonIdempatomicFileOperator
@@ -130,23 +132,133 @@ simply just not "returned".
 
 ## Implementation: Mini-Criminal Justice Scraping Pipeline
 
+#### Preface
+
+Goal: Get criminal history information on people who are incarcerated pretrial in Shelby County, TN. 
+First, we want to scrape the jail population, and then use their name and dob to search them in the
+larger database which includes all past court cases (that haven't been expunged).
+
+Why: I am going to take this data and implement a django web app which visualizes various stats about 
+recidivism, length of stay pretrial, etc... 
+
+Note: The portals that are scraped in this pipeline are both completely public information. Just one of 
+them requires registration (which doesn't even have a terms of service...), so I have set up dummy 
+credentials if anyone wants to poke around. Also, I keep these repos private because I don't want someone using this info
+against any of the people incarcerated. I am happy to invite you as a collaborator on the repos so 
+so that you can run this pipeline as long as you promise not to misuse it (and as long as you promise
+not to judge how ugly the code is. They are relics from a long time ago.)
+
+Data:
+* [Jail Population Data](https://imljail.shelbycountytn.gov/IML): Just hit search without putting
+anything in the query.
+* [Criminal History Data](https://odysseyidentityprovider.tylerhost.net/idp/account/signin?ReturnUrl=%2fidp%2fissue%2fwsfed%3fwa%3dwsignin1.0%26wtrealm%3dhttps%253a%252f%252fcjs.shelbycountytn.gov%252fCJS%252f%26wctx%3drm%253d0%2526id%253dpassive%2526ru%253d%25252fCJS%25252fAccount%25252fLogin%26wct%3d2019-04-10T16%253a27%253a35Z%26wauth%3durn%253a74&wa=wsignin1.0&wtrealm=https%3a%2f%2fcjs.shelbycountytn.gov%2fCJS%2f&wctx=rm%3d0%26id%3dpassive%26ru%3d%252fCJS%252fAccount%252fLogin&wct=2019-04-10T16%3a27%3a35Z&wauth=urn%3a74):
+Log in. Click on "Smart Search" and just choose a common name. You can click through their past cases. 
+
 #### Setup
-Airflow is a little fidgetty to set up, so I mended together Dockerfiles/docker-compose.yaml's to
+Airflow is a little fidgety to set up, so I mended together Dockerfiles/docker-compose.yaml's to
 produce a reproducible environment which runs Airflow and allows scraping using Selenium Webdriver.
 
 To get the docker network running (which consists of `postgres:11.7` and `python:3.7` images), we first
-need to defined a `.env` file with:
+need to define a `.env` file with:
 
 ```
 AIRFLOW_HOME=/usr/local/airflow # where Airflow lives in container
-CI_USER_TOKEN=... # user token to access my private scraping repos in GitHub
+CI_USER_TOKEN=... # user token to access your GitHub repos once I make you collaborator
 ODYSSEY_USER=... # username for Odyssey Criminal Justice Portal
 ODYSSEY_PASS=... # password for Odyssey
 ```
 
-Then, we simply run `$ docker-compose up` which automatically runs Airflow's webserver and scheduler
-upon entry into the container. Opening up a browser, you can connect to localhost:8080 to see the
-Airflow UI. To kick off the dag, we simply hit the play button on the right side. 
+
+Then, the user simply needs to run `$ docker-compose build` and subsequently `$ docker-compose up` 
+which automatically runs Airflow's webserver and scheduler upon entry into the container. Opening 
+up a browser, you can connect to localhost:8080 to see the Airflow UI. To kick off the dag, we 
+simply hit the play button on the right side. 
+
+Note: Huge thanks to "puckel/docker-airflow" for providing such an outstanding docker setup for getting
+Airflow up and running. Much of the base code in the Dockerfile and docker-compose.yaml is their's, 
+but I did make significant adjustments to make everything work. Regardless, I would have never been 
+able to implement the `entrypoint.sh` bash script without puckel's work though. The parts for Selenium
+webdriver were also derived from the Selenium image's Dockerfile, but I actually wrote a lot of it
+before finding their code. They just did it better and this isn't a Docker course :)
 
 
+#### About the DAG
+
+As summarized before, this dynamic DAG was meant to solve the problem of a scraper failing (which they inevitably
+do). By breaking the task of scraping information on 3000 people (max) which can take over 10 hours easily, 
+we significantly offset the cost of failure, since when we re-run the dag after failure, it will skip 
+all the tasks that it has already completed and pick up where it left off. 
+
+I also want the ability to scale the number of concurrent workers dynamically in order to reduce
+the load on the website when it is unecessary and to increase the load when I'm worried the 
+scrapers will not have enough time to finish the job. I decided to change directions to focus on 
+the new operator before I implemented this feature. The current DAG is dynamic, but the concurrency
+is defined at the instantiation of the DAG meaning that it cannot be changed after the DAG runs.
+To mitigate this, I will use a SubDagOperator to scale the `odyssey_scraper` tasks which will 
+allow me to set the concurrency when that task is run. 
+
+In terms of dynamism, Airflow is very interesting, because the scheduler is "filling the DagBag" so
+frequently (every 20 seconds or so). This results in a very dynamic -- maybe too dynamic -- workflow, 
+because if I change the code for a downstream task *while the DAG is already running*, it will actually 
+run the updated code *in that same dag run*. Therefore, I need to be intentional about when I push code. 
+
+#### Deployment
+
+I am going to proceed with Airflow because of its convenience when it comes to running on remote
+servers -- in my case, AWS EC2 instances. While Luigi's UI is sufficient, I find it very convenient 
+that I can kick off DAGs, see  logs of individual tasks, etc... without every ssh-ing into the AWS 
+instance. Also, notice within my dag that I am using `Variable` objects from Airflow. I am able to change
+these variables from the UI, meaning that I can also change the logic of my pipeline without ssh-ing too.
+I plan to upgrade this pipeline from a LocalExecutor to a distributed CeleryExecutor for financial reasons (8 t2.micros 
+is a quarter of the price of a t3.2xlarge). 
+
+#### Other
+
+During the process of refactoring my jail_scraper code, I also noticed that I had consistently used 
+a terrible `try-except` paradigm for scraping to implement my own "try-retry" block. Since javascript 
+apps can be inconsistent in their behavior, I basically had:
+
+```python
+
+try:
+    scraper.scrape_info(css_selector)
+except:
+    scraper.scrape_info(css_selector)
+
+``` 
+which was quite painful to look back and see. Therefore, I insituted a simple decorator to do this for me:
+
+```python
+def try_again_if_timeout(func):
+
+    def wrapper(*args, **kwargs):
+        try:
+            data = func(*args, **kwargs)
+        except TimeoutError:
+            data = func(*args, **kwargs)
+        return data
+    return wrapper
+```
+
+This made my code significantly more clean without refactoring almost any code. 
+#### The Future
+* Implement pipenv instead of requirements.txt: docker-airflow has the use of requirements.txt hardcoded into the structure of the ENTRYPOINT,
+and I do not know bash well enough to risk messing it up. Docker already took a large amout of time to get set up correctly for various reasons
+(let's just say that I learned a lot), so I put it off since Docker is already the most reproducible environment that we can get. 
+* Salted Graph: The PythonIdempatomicFileOperator is prime for implementing a salted graph in Airflow.
+Really, all one has to do is inherit and overwrite the `self.get_file_path` method. Additionally, one could 
+use an `@version(2.1.1)` decorator such as 
+```python
+def version(version_num):
+    def decorator(func):
+        func._version = version_num
+        return func
+    return decorator
+``` 
+which would give a version to the python_callable (since we would want the version parameter to be 
+closest to where the code is changing). 
+* Persist Airflow meta-db to AWS RDBS: This would allow increased mobility when deploying. Easily taking down and putting up DB without losing history.
+* Deploy on AWS and scale to cluster
+* Django webapp for results hosted on Just City's website
+* API to give national stakeholders access to good, clean data from one of the epicenters of criminal justice misuse
 
