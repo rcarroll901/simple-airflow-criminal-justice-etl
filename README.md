@@ -27,6 +27,8 @@ Overview Video: [Final Project - Overview.mp4](https://drive.google.com/open?id=
 
 ## PythonIdempatomicFileOperator
 
+**source code:** `airflow/dags/submodules/task.py`
+
 From the user experience, implementing the `PythonIdempatomicFileOperator` is almost identical to 
 implementing the plain `PythonOperator`:
 
@@ -84,6 +86,9 @@ behave idempotently and atomically.
 
 
 ## requires()
+
+**source code:** `airflow/dags/submodules/task.py`
+
 If we are implementing a data pipeline, we will most likely be writing to and reading from a series of
 files, databases, etc... as we move and shape that data. Airflow's flexibility does not have an 
 immediately obvious way of keeping track of the file paths produced by upstream tasks, and, more 
