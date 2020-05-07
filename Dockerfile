@@ -43,7 +43,8 @@ RUN set -ex \
         libssl-dev \
         libffi-dev \
         libpq-dev \
-        git \
+        python3-dev \
+        gcc \
     ' \
     && apt-get update -yqq \
     && apt-get upgrade -yqq \
@@ -61,21 +62,6 @@ RUN set -ex \
     && locale-gen \
     && update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
     && useradd -ms /bin/bash -d ${AIRFLOW_USER_HOME} airflow \
-    && pip install -U pip setuptools wheel \
-    && pip install pytz \
-    && pip install pyOpenSSL \
-    && pip install ndg-httpsclient \
-    && pip install pyasn1 \
-    && pip install apache-airflow[crypto,celery,postgres,hive,jdbc,mysql,ssh${AIRFLOW_DEPS:+,}${AIRFLOW_DEPS}]==${AIRFLOW_VERSION} \
-    && pip install 'redis==3.2' \
-
-    # added by Ryan
-    && pip install -e git+https://github.com/rcarroll901/python-odyssey-scraper#egg=odyssey_scraper \
-    && pip install -e git+https://github.com/rcarroll901/jail_scraper@airflow#egg=jail_scraper \
-    && pip install -e git+https://github.com/csci-e-29/2020sp-csci-utils-rcarroll901#egg=csci_utils \
-
-    && if [ -n "${PYTHON_DEPS}" ]; then pip install ${PYTHON_DEPS}; fi \
-    && apt-get purge --auto-remove -yqq $buildDeps \
     && apt-get autoremove -yqq --purge \
     && apt-get clean \
     && rm -rf \
@@ -86,8 +72,7 @@ RUN set -ex \
         /usr/share/doc \
         /usr/share/doc-base
 
-# Added by Ryan: bugfix for new version of SQLAlchemy and Airflow
-RUN pip uninstall -y SQLAlchemy && pip install SQLAlchemy==1.3.15
+# entrypoint kicks off scheduler, webserver and handles protocols for different Executors
 COPY entrypoint.sh /entrypoint.sh
 COPY airflow/airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg
 
@@ -111,12 +96,14 @@ ENV DISPLAY=:99
 # puckel used requirements.txt in his docker setup which entrypoint.sh uses and is not straightforward
 # to change to pipenv environment since entrypoint below is needed to run webserver and scheduler.
 # (in other words, can't use "pipenv run" as entrypoint)
-COPY requirements.txt ${AIRFLOW_USER_HOME}/requirements.txt
-RUN pip install -r ${AIRFLOW_USER_HOME}/requirements.txt
+RUN pip install pipenv
+COPY ./Pipfile ${AIRFLOW_USER_HOME}/Pipfile
+COPY ./Pipfile.lock ${AIRFLOW_USER_HOME}/Pipfile.lock
+WORKDIR ${AIRFLOW_USER_HOME}
+RUN pipenv install --deploy --ignore-pipfile --system --dev
 
 EXPOSE 5000 8080 5555 8793
 USER airflow
-WORKDIR ${AIRFLOW_USER_HOME}
 
 
 
