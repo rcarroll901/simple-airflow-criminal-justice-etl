@@ -2,10 +2,11 @@ import os
 
 def requires(task_id, **kwargs):
     """
-    Uses Airflow's Xcom to
-    :param task_id:
-    :param kwargs: context **kwargs from Airflow. Automatically input when using
-        kwarg provide_context = True in operator kwargs
+    Uses Airflow's Xcom to pull in return value from another task
+
+    :param task_id: task_id of the task for which we want the return value
+    :param kwargs: context **kwargs from Airflow. Automatically input when using kwarg
+        provide_context = True in operator kwargs
     :return: dictionary with keys that are the names (without extension) of the files and with
         values that are the full path to that file
 
