@@ -63,20 +63,21 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
             raise ValueError(
                 "output_path argument should go in Operator's output_pattern argument (and not in op_kwargs)"
             )
-        self.output_path = self.get_file_path(output_pattern)
+        self.output_pattern = output_pattern
         self.previously_completed = (
             None  # this will allow us to easily check run status
         )
 
-    def get_file_path(self, output_pattern):
+    def get_file_path(self):
         """
         Use kwargs to fill in output_pattern.
 
         "{today_date}" is automatically understood in output pattern to mean today's date
         """
-        return output_pattern.format(
+        return self.output_pattern.format(
             **self.op_kwargs, today_date=datetime.today().strftime("%m-%d-%Y")
         )
+
 
     def execute_callable(self):
         """
@@ -95,6 +96,7 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
                 os.makedirs(parent_dir)
             # write atomically and insert output_path into python_callable
             with atomic_write(self.output_path, as_file=False) as f:
+                self.log.info('DOES TEMP FILE EXIST: ' + str(os.path.exists(f)))
                 return self.python_callable(
                     *self.op_args, output_path=f, **self.op_kwargs
                 )
@@ -107,22 +109,22 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
             if not os.path.exists(parent_dir):
                 os.makedirs(parent_dir)
             with atomic_dir_create(self.output_path) as d:
+                self.log.info('DOES TEMP DIR EXIST: ' + str(os.path.exists(d)))
                 return self.python_callable(
                     *self.op_args, output_path=d, **self.op_kwargs
                 )
 
-    def execute(self, context):
 
+    def execute(self, context):
+        self.output_path = self.get_file_path()
+        self.log.info('DOES REAL FILE EXIST: ' + str(os.path.exists(self.output_path)))
+        self.log.info('DOES REAL FILE EXIST: ' + self.output_path)
         # if file exists already, then task has been completed and skip execution and log
         if os.path.exists(self.output_path):
             self.log.info(
                 "This task did not run because it had already been completed."
             )
             self.previously_completed = True  # use this for testing
-            try:
-                raise AirflowSkipException("This task has already been completed")
-            except:
-                pass
             log_value = "Previously Completed"
 
         # if file does not exist, execute per usual
@@ -130,6 +132,7 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
             self.previously_completed = False
             log_value = super().execute(context)
         self.log.info("Done. Returned value was: %s", log_value)
+        self.log.info('DOES REAL EXIST: ' + str(os.path.exists(self.output_path)))
         return (
             self.output_path
         )  # return output_path *always* so it will be logged in Xcom automatic

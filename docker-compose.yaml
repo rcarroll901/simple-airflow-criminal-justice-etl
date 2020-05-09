@@ -27,7 +27,7 @@ services:
       - ODYSSEY_PASS
     volumes:
       - ./airflow/dags:/usr/local/airflow/dags
-      - .airflow/data:/usr/local/airflow/data
+      - ./airflow/data:/usr/local/airflow/data
       - /dev/shm:/dev/shm
     ports:
       - "8080:8080"
