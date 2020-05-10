@@ -19,6 +19,8 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
 
     :param python_callable: A reference to an object that is callable
     :type python_callable: python callable which must take 'output_path' as a parameter
+    :param output_patter: A templated file/directory path where the {vars} in pattern correspond
+        to op_kwargs
     :param op_kwargs: a dictionary of keyword arguments that will get unpacked
         in your function
     :type op_kwargs: dict (templated)
@@ -96,7 +98,7 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
                 os.makedirs(parent_dir)
             # write atomically and insert output_path into python_callable
             with atomic_write(self.output_path, as_file=False) as f:
-                self.log.info('DOES TEMP FILE EXIST: ' + str(os.path.exists(f)))
+
                 return self.python_callable(
                     *self.op_args, output_path=f, **self.op_kwargs
                 )
@@ -109,7 +111,6 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
             if not os.path.exists(parent_dir):
                 os.makedirs(parent_dir)
             with atomic_dir_create(self.output_path) as d:
-                self.log.info('DOES TEMP DIR EXIST: ' + str(os.path.exists(d)))
                 return self.python_callable(
                     *self.op_args, output_path=d, **self.op_kwargs
                 )
