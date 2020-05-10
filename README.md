@@ -25,6 +25,8 @@ Intro Video (Optional): [Final Project - Intro to Airflow and Context.mp4](https
 
 Overview Video: [Final Project - Overview.mp4](https://drive.google.com/open?id=1-oNeSJOUFifrcbP0DT5zhbx50xvYqQLM)
 
+
+
 ## PythonIdempatomicFileOperator
 
 **source code:** `airflow/dags/submodules/operator.py`
@@ -144,8 +146,8 @@ simply just not "returned".
 **sandbox dag:** `airflow/dags/salted_dag.py`
 
 After completing the assignment, I decided to give an hour to building a `PythonSaltedLocalOperator`
-(I'm terrible at naming things) as a child class of `PythonIdempatomicFileOperator` with some pretty 
-decent success. Compared to the above examples, it looks like this:
+(I'm terrible at naming things) as a child class of `PythonIdempatomicFileOperator` with a lot of
+ success. Compared to the above examples, it looks like this:
 
 ```python
 @version('0.1.2')
@@ -161,7 +163,7 @@ my_task = PythonSaltedLocalOperator(task_id='task_1',
 ```
 
 So, all we had to add was a `@version` decorator to our python callable and add a place in the
-output_pattern template for the salt to be placed. The salt detects changes in the kwargs and the version
+`output_pattern` template for the salt to be placed. The salt detects changes in the kwargs and the version
 and passes that information downstream using Xcom. Xcom acts kind of like the cache which Prof Gorlin
 mentioned in class, allowing our computation to be O(N) vs O(N^2) since finding the salt does not 
 need to be defined recursively. We can just simply grab the salt for each task from the meta-database.
@@ -182,9 +184,12 @@ in the menu on the right side to officially trigger it. It will probably throw a
 `jail_scraper_dag.py` out of your forked repo if it prevents you from running the example dag independently.
 
 
-## Implementation: Mini-Criminal Justice Scraping Pipeline
+## Implementation of PythonIdempatomicFileOperator:
+
+### Mini-Criminal Justice Scraping Pipeline
 
 **source code:** `airflow/dags/jail_scraper_dag.py`
+
 **tests:** `airflow/dags/test_dag.py`
 
 #### Preface
@@ -308,23 +313,17 @@ directories. The idea of using a directory did not seem to mesh with inheriting 
 package, so I just used the more straightforward approach. It is defined in my `csci-utils`.
 
 #### The Future
-* Salted Graph: The PythonIdempatomicFileOperator is prime for implementing a salted graph in Airflow.
-Really, all one has to do is inherit and overwrite the `self.get_file_path` method. Additionally, one could 
-use an `@version(2.1.1)` decorator such as 
-```python
-def version(version_num):
-    def decorator(func):
-        func._version = version_num
-        return func
-    return decorator
-``` 
-which would give a version to the python_callable (since we would want the version parameter to be 
-closest to where the code is changing). 
 * Persist Airflow meta-db to AWS RDBS: This would allow increased mobility when deploying. Easily taking down and putting up DB without losing history.
-* Deploy on AWS and scale to cluster
+* Deploy on AWS and scale to cluster using Airflow's CeleryExecutor
 * Django webapp for results hosted on Just City's website
 * API to give national stakeholders access to good, clean data from one of the epicenters of criminal justice misuse
-* Better job detecting file or dir from output patter. I would like for the user to be able to leave off
-the trailing '/' and it still detect that it is a directory. It's not immediately clear how to do this
-since some files don't have extensions, but I think this is rare enough to leverage this for better 
-detection.
+* Better ability to detect file vs dir from `output_pattern`. I would like for the user to be able to leave off
+the trailing '/' and it still detect that it is a directory (as best it can). It's not immediately 
+clear how to do this since some files don't have extensions, but I think this is rare enough to 
+leverage looking for an extension for better detection (or just simply a warning).
+* Add a warning such that, if PythonIdempatomicFileOperator detects an not-explicitly-idempotent/atomic
+operator upstream, it throws a warning to the user. If a non-idempotent operator is upstream from 
+our idempotent operator, then a DAG re-run would rerun the upstream task but not re-reun the idempotent 
+operator. This could be solved with a "signature" as Prof Gorlin described in class (and could be applied
+to the "salted case" also), but in the near future, since I'm the only user, a simple (but loud) 
+warning is sufficient. 
