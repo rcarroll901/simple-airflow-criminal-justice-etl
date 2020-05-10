@@ -28,6 +28,7 @@ Overview Video: [Final Project - Overview.mp4](https://drive.google.com/open?id=
 ## PythonIdempatomicFileOperator
 
 **source code:** `airflow/dags/submodules/operator.py`
+
 **tests:** `airflow/dags/submodules/test_operator.py`
 
 From the user experience, implementing the `PythonIdempatomicFileOperator` is almost identical to 
@@ -89,6 +90,7 @@ behave idempotently and atomically.
 ## requires()
 
 **source code:** `airflow/dags/submodules/task.py`
+
 **tests:** `airflow/dags/submodules/test_task.py`
 
 If we are implementing a data pipeline, we will most likely be writing to and reading from a series of
@@ -135,6 +137,49 @@ status logs, I felt comfortable overwriting the user's ability to return their o
 return value from the python_callable is still logged in the PythonIdempatomicFileOperator. It is 
 simply just not "returned".
 
+## Salted DAGs
+
+**source code:** `airflow/dags/submodules/salted_operator.py`
+
+**sandbox dag:** `airflow/dags/salted_dag.py`
+
+After completing the assignment, I decided to give an hour to building a `PythonSaltedLocalOperator`
+(I'm terrible at naming things) as a child class of `PythonIdempatomicFileOperator` with some pretty 
+decent success. Compared to the above examples, it looks like this:
+
+```python
+@version('0.1.2')
+def task(output_path, my_kwarg):
+    create_my_files(output_path) # creates file_1.csv and file_2.csv in /foo/bar/ directory
+    return 'Complete'
+
+my_task = PythonSaltedLocalOperator(task_id='task_1',
+                                        python_callable = task,
+                                        output_pattern='/foo/bar-{salt}/', 
+                                        op_kwargs = {'my_kwarg':4}
+                                        dag = dag)
+```
+
+So, all we had to add was a `@version` decorator to our python callable and add a place in the
+output_pattern template for the salt to be placed. The salt detects changes in the kwargs and the version
+and passes that information downstream using Xcom. Xcom acts kind of like the cache which Prof Gorlin
+mentioned in class, allowing our computation to be O(N) vs O(N^2) since finding the salt does not 
+need to be defined recursively. We can just simply grab the salt for each task from the meta-database.
+
+I also added a `example_salted_dag` DAG into `airflow/dags/salted-dag.py` which is basically a 
+hollowed out version of the criminal justice scraping dag (i.e. all the logic from the actual tasks
+is removed. I mention in the criminal justice scraping section below that the user must download some
+private repos to test run the scraper. Since the task logic is hollowed out, this `example_salted_dag`
+can **almost** be run out of the box, and the user can see the PythonIdempatomicFileOperator behavior
+(skipping completed tasks and writing atomically) *and* the salted behavior without going through all 
+the trouble of getting the dag below set up. 
+
+In order to run the `example_salted_dag`, simply remove the custom private repos from the Pipfile, and 
+then use `$ docker-compose build` and subsequently `$ docker-compose up` to get the scheduler and webserver 
+up and running. Then go to `localhost:8080` and click the `example_salted_dag` from "OFF" to "ON" and hit the play button
+in the menu on the right side to officially trigger it. It will probably throw an error saying that 
+`jail_scraper_dag` could not be imported (since dependencies aren't there), but you can just delete 
+`jail_scraper_dag.py` out of your forked repo if it prevents you from running the example dag independently.
 
 
 ## Implementation: Mini-Criminal Justice Scraping Pipeline
@@ -279,4 +324,7 @@ closest to where the code is changing).
 * Deploy on AWS and scale to cluster
 * Django webapp for results hosted on Just City's website
 * API to give national stakeholders access to good, clean data from one of the epicenters of criminal justice misuse
-
+* Better job detecting file or dir from output patter. I would like for the user to be able to leave off
+the trailing '/' and it still detect that it is a directory. It's not immediately clear how to do this
+since some files don't have extensions, but I think this is rare enough to leverage this for better 
+detection.
