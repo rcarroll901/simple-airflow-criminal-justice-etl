@@ -17,19 +17,23 @@ from submodules.task import requires
 from jail_scraper.airflow_scraper import main as scrape_jail_website
 from odyssey_scraper.smartsearch import SmartSearchScraper
 
-@version('0.1.0')
+
+@version("0.1.0")
 def scrape_jail(output_path, test):
     return "Complete"
 
-@version('0.2.0')
+
+@version("0.2.0")
 def check_jail_profiles(output_path, fake_arg, **kwargs):
     return "Complete"
 
-@version('0.1.0')
+
+@version("0.1.0")
 def scrape_odyssey(index, output_path, **kwargs):
     return "Complete"
 
-@version('0.1.0')
+
+@version("0.1.0")
 def upload_data():
     """
     Dummy task to fake upload data
@@ -59,7 +63,7 @@ check_profiles = PythonSaltedLocalOperator(
     task_id="check_profiles",
     python_callable=check_jail_profiles,
     output_pattern="data/scrapes/{today_date}/to_do-{salt}/",
-    op_kwargs = {'fake_arg': 35},
+    op_kwargs={"fake_arg": 35},
     provide_context=True,
     dag=dag,
 )

@@ -80,7 +80,6 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
             **self.op_kwargs, today_date=datetime.today().strftime("%m-%d-%Y")
         )
 
-
     def execute_callable(self):
         """
         Calls the python callable with the given arguments. Replaces the real path with a temp path
@@ -115,11 +114,10 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
                     *self.op_args, output_path=d, **self.op_kwargs
                 )
 
-
     def execute(self, context):
         self.output_path = self.get_file_path()
-        self.log.info('DOES REAL FILE EXIST: ' + str(os.path.exists(self.output_path)))
-        self.log.info('DOES REAL FILE EXIST: ' + self.output_path)
+        self.log.info("DOES REAL FILE EXIST: " + str(os.path.exists(self.output_path)))
+        self.log.info("DOES REAL FILE EXIST: " + self.output_path)
         # if file exists already, then task has been completed and skip execution and log
         if os.path.exists(self.output_path):
             self.log.info(
@@ -133,7 +131,7 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
             self.previously_completed = False
             log_value = super().execute(context)
         self.log.info("Done. Returned value was: %s", log_value)
-        self.log.info('DOES REAL EXIST: ' + str(os.path.exists(self.output_path)))
+        self.log.info("DOES REAL EXIST: " + str(os.path.exists(self.output_path)))
         return (
             self.output_path
         )  # return output_path *always* so it will be logged in Xcom automatic
