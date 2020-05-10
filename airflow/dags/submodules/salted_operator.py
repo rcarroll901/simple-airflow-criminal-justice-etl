@@ -1,4 +1,3 @@
-
 from .operator import PythonIdempatomicFileOperator
 from hashlib import sha256
 from datetime import datetime
@@ -9,7 +8,9 @@ def version(version_num):
     def decorator(func):
         func._version = version_num
         return func
+
     return decorator
+
 
 class PythonSaltedLocalOperator(PythonIdempatomicFileOperator):
     """
@@ -46,6 +47,7 @@ class PythonSaltedLocalOperator(PythonIdempatomicFileOperator):
         processing templated fields, for examples ``['.sql', '.hql']``
     :type templates_exts: list[str]
     """
+
     def __init__(
         self,
         python_callable,
@@ -54,17 +56,17 @@ class PythonSaltedLocalOperator(PythonIdempatomicFileOperator):
         templates_dict=None,
         templates_exts=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
 
         super().__init__(
             python_callable=python_callable,
-            output_pattern = output_pattern,
-            op_kwargs=op_kwargs, # force user to use kwargs to avoid arg annoyances
+            output_pattern=output_pattern,
+            op_kwargs=op_kwargs,  # force user to use kwargs to avoid arg annoyances
             templates_dict=templates_dict,
             templates_exts=templates_exts,
             *args,
-            **kwargs
+            **kwargs,
         )
         self.previously_completed = (
             None  # this will allow us to easily check run status
@@ -75,57 +77,60 @@ class PythonSaltedLocalOperator(PythonIdempatomicFileOperator):
             self.python_callable._version
         except:
             raise AttributeError(
-                'Must version python_callables to use salted workflow. See @version decorator.')
-
+                "Must version python_callables to use salted workflow. See @version decorator."
+            )
 
     def get_salted_version(self, context):
         """
         Get salt for current task given adjacent, upstream tasks using kwargs and python_callable
         info
         """
-        ti = context['ti'] # access metadate
-        upstream = list(self.upstream_task_ids) # property of BaseOperator
-        upstream.sort() # put in alphabetical order just in case variance
+        ti = context["ti"]  # access metadate
+        upstream = list(self.upstream_task_ids)  # property of BaseOperator
+        upstream.sort()  # put in alphabetical order just in case variance
 
         # just grab the salts of directly upstream tasks directly from xcom
-        msg = ''.join([ti.xcom_pull(task_id, key='salt') for task_id in upstream])
+        msg = "".join([ti.xcom_pull(task_id, key="salt") for task_id in upstream])
 
         # uniquely identify this task
         self.python_callable_version = self.python_callable._version
-        self.kwargs_rep = ','.join([f'{key}={value}' for key, value in self.op_kwargs.items()])
-        
+        self.kwargs_rep = ",".join(
+            [f"{key}={value}" for key, value in self.op_kwargs.items()]
+        )
+
         # append info to upstream salts
-        msg += ','.join([self.task_id, self.python_callable_version, self.kwargs_rep])
-        
+        msg += ",".join([self.task_id, self.python_callable_version, self.kwargs_rep])
+
         # return hex repr
         return sha256(msg.encode()).hexdigest()
-        
 
     def get_file_path(self):
         """
         Substitute op_kwargs and salt into output_pattern
         """
-        return self.output_pattern.format(salt=self.salt[:6],
-                                          **self.op_kwargs,
-                                          today_date=datetime.today().strftime("%m-%d-%Y"))
+        return self.output_pattern.format(
+            salt=self.salt[:6],
+            **self.op_kwargs,
+            today_date=datetime.today().strftime("%m-%d-%Y"),
+        )
 
     def log_run_data(self, context):
         """
         Push the python_callable version, kwargs, and salt to Xcom for use/reference downstream
         """
-        ti = context['ti']
+        ti = context["ti"]
 
         # version of callable
-        self.log.info('PYTHON_CALLABLE VERSION: ' + self.python_callable_version)
-        ti.xcom_push(key='python_callable_version', value=self.python_callable_version)
+        self.log.info("PYTHON_CALLABLE VERSION: " + self.python_callable_version)
+        ti.xcom_push(key="python_callable_version", value=self.python_callable_version)
 
         # kwargs
-        self.log.info('KWARGS: ' + self.kwargs_rep)
-        ti.xcom_push(key='kwargs', value=self.kwargs_rep)
+        self.log.info("KWARGS: " + self.kwargs_rep)
+        ti.xcom_push(key="kwargs", value=self.kwargs_rep)
 
         # salted version
-        self.log.info('SALT: ' + self.salt)
-        ti.xcom_push(key='salt', value=self.salt)
+        self.log.info("SALT: " + self.salt)
+        ti.xcom_push(key="salt", value=self.salt)
 
     def execute(self, context):
         """
@@ -135,7 +140,7 @@ class PythonSaltedLocalOperator(PythonIdempatomicFileOperator):
         # get the salt which will be passed into execute() automatically
         self.salt = self.get_salted_version(context)
         super().execute(context)
-        self.log.info('SALTED PATH: ' + self.output_path)
+        self.log.info("SALTED PATH: " + self.output_path)
 
         # push relevant variables to Xcom for reference/use downstream
         self.log_run_data(context)
