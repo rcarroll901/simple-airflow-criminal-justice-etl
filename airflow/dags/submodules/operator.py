@@ -1,13 +1,12 @@
 from airflow.operators.python_operator import PythonOperator
-from airflow.models import SkipMixin
 import inspect
 import os
 from csci_utils.io import atomic_write, atomic_dir_create
 from datetime import datetime
-from airflow.exceptions import AirflowSkipException
 
 
-class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
+
+class PythonIdempatomicFileOperator(PythonOperator):
     """
     Executes a Python callable which creates a file or directory such that
 

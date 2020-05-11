@@ -1,5 +1,24 @@
 # airflow_cj_report_card
 
+Table of Contents
+=================
+
+   * [airflow_cj_report_card](#airflow_cj_report_card)
+      * [Motivation](#motivation)
+      * [PythonIdempatomicFileOperator](#pythonidempatomicfileoperator)
+      * [requires()](#requires)
+      * [PythonSaltedLocalOperator and a Salted DAG](#salted-dags)
+      * [Implementation of PythonIdempatomicFileOperator](#implementation-of-pythonidempatomicfileoperator)
+        * [Mini-Criminal Justice Scraping Pipeline](#mini-criminal-justice-scraping-pipeline)
+        * [Preface](#preface)
+        * [Data](#data)
+        * [Setup](#setup)
+        * [About the DAG](#about-the-dag)
+        * [Deployment](#deployment)
+        * [Other](#other)
+        * [The Future](#the-future)
+      * [Testing](#testing)
+      
 ## Motivation
 
 My final project relates to a project that I've been working toward for [Just City](https://justcity.org/), a local criminal justice reform organization in Memphis, TN. I've been scraping very granular jail and criminal history data for a while now, and when I started my project, I planned to use Airflow to pull together this big pipeline and do the (quite annoying) order of operations required to get a properly normalized, queryable DB structure. But after working with Airflow for a while, I realized something:
@@ -17,7 +36,7 @@ So, I did build a web scraping pipeline with Airflow that scales the number of s
 
 Instead, my final project implements and showcases a new operator --  `PythonIdempatomicFileOperator` (or, as I like to call it, the `PythonYoshiOperator`) -- and paradigm in Airflow that provides a solution to the above "problems" in a user-friendly way, keeping the flexibility (and scalability, testability, and the UI!) of Airflow while adding some of the conveniences/cleanliness of Luigi. 
 
-Below are my powerpoint presentation and videos which give varying levels of insight into my project and results. I had a lot to discuss so I separated the Intro to Airflow/Motivation parts for my project into an "Intro Video" in case you need more context, but the preface video should not be required to understand what I'm doing in the "real" project video. 
+Below are my powerpoint presentation and videos which give varying levels of insight into my project and results. I had a lot to discuss so I separated the Intro to Airflow/Motivation parts for my project into an "Intro Video" in case you need more context, but the preface video should not be required to understand what I'm doing in the "real" project video. Since I ended up implementing a "salted dag" workflow, I also added a demonstration video of the `jail_scraper_dag` (without any actual scraping) using the new P`ythonSaltedLocalOperator` `(I'm terrible at naming things).
 
 PowerPoint: [Final Project - Presentation.pdf](https://drive.google.com/open?id=1KWzkc_oH4y3ZZtKfdKIHQnIiEJXi9ey-)
 
@@ -38,7 +57,7 @@ Salted Workflow: [Final Project - Airflow Salted Dag Demo](https://drive.google.
 From the user experience, implementing the `PythonIdempatomicFileOperator` is almost identical to 
 implementing the plain `PythonOperator`:
 
-PythonOperator:
+**PythonOperator:**
 ```python
 def task():
     return 'Completed'
@@ -59,7 +78,7 @@ To implement this operator, we simply add two things to the above paradigm:
 1. Add `output_pattern` kwarg to the Operator instantiation
 2. Add `output_path` arg to the python_callable
 
-PythonIdempatomicFileOperator:
+**PythonIdempatomicFileOperator:**
 ```python
 def task(output_path):
     create_my_files(output_path) # creates file_1.csv and file_2.csv in /foo/bar/ directory
@@ -75,9 +94,9 @@ With adding an `output_path` argument to our task  and the `output_pattern` argu
 (which will be passed to the `output_path` argument in `task` automatically by our Operator), we gain
 both atomicity and idempotency automatically. For more details on how this was implemented, please 
 see the PowerPoint linked above which goes into the source code and also draws a side-by-side
-comparison of the hardcoded way of implementing these concepts 
+comparison of the hardcoded way of implementing these concepts. 
 
-Important Notes:
+**Important Notes:**
 * Directories must always include an ending `/` or `\` (depending on operatin system) to designate
 that it is not just a file without an extension.
 * When a task is skipped, it is not highlighted as Pink in Airflow's UI. It is still considered a 
@@ -141,7 +160,7 @@ status logs, I felt comfortable overwriting the user's ability to return their o
 return value from the python_callable is still logged in the PythonIdempatomicFileOperator. It is 
 simply just not "returned".
 
-## Salted DAGs
+## PythonSaltedLocalOperator and a Salted DAG
 
 **source code:** `airflow/dags/submodules/salted_operator.py`
 
@@ -189,9 +208,9 @@ in the menu on the right side to officially trigger it. It will probably throw a
 `jail_scraper_dag.py` out of your forked repo if it prevents you from running the example dag independently.
 
 
-## Implementation of PythonIdempatomicFileOperator:
+## Implementation of PythonIdempatomicFileOperator
 
-### Mini-Criminal Justice Scraping Pipeline
+#### Mini-Criminal Justice Scraping Pipeline
 
 **source code:** `airflow/dags/jail_scraper_dag.py`
 
@@ -213,7 +232,7 @@ against any of the people incarcerated. I am happy to invite you as a collaborat
 so that you can run this pipeline as long as you promise not to misuse it (and as long as you promise
 not to judge how ugly the code is. They are relics from a long time ago.)
 
-#### Data:
+#### Data
 * [Jail Population Data](https://imljail.shelbycountytn.gov/IML): Just hit search without putting
 anything in the query.
 * [Criminal History Data](https://odysseyidentityprovider.tylerhost.net/idp/account/signin?ReturnUrl=%2fidp%2fissue%2fwsfed%3fwa%3dwsignin1.0%26wtrealm%3dhttps%253a%252f%252fcjs.shelbycountytn.gov%252fCJS%252f%26wctx%3drm%253d0%2526id%253dpassive%2526ru%253d%25252fCJS%25252fAccount%25252fLogin%26wct%3d2019-04-10T16%253a27%253a35Z%26wauth%3durn%253a74&wa=wsignin1.0&wtrealm=https%3a%2f%2fcjs.shelbycountytn.gov%2fCJS%2f&wctx=rm%3d0%26id%3dpassive%26ru%3d%252fCJS%252fAccount%252fLogin&wct=2019-04-10T16%3a27%3a35Z&wauth=urn%3a74):
@@ -319,6 +338,9 @@ package, so I just used the more straightforward approach. It is defined in my `
 
 #### The Future
 * Persist Airflow meta-db to AWS RDBS: This would allow increased mobility when deploying. Easily taking down and putting up DB without losing history.
+* I would like to implement functionality in the PythonIdempatomicFileOperator that shows skipped tasks as "Skipped" in the meta-db. This is easy to do for
+upstream and downstream tasks, but it is nontrivial to set the status while the operator is running. I found a way using the AirflowSkipException, but it didn't push the 
+ logs to the webserver (since the Operator execution is interrupted).
 * Deploy on AWS and scale to cluster using Airflow's CeleryExecutor
 * Django webapp for results hosted on Just City's website
 * API to give national stakeholders access to good, clean data from one of the epicenters of criminal justice misuse
@@ -334,4 +356,9 @@ to the "salted case" also), but in the near future, since I'm the only user, a s
 warning is sufficient. 
 * I'll probably change the fact that PythonIdempatomicFileOperator always returns the file path. 
 I thought it was clever at the time, but it would be better to let people return whatever they want
-and push the output_path to Xcom separately.
+and push the output_path to Xcom explicitly/separately.
+
+## Testing
+In order to execute tests on the DAG, PythonIdempatomicOperator, and requires(), simply run
+`$ docker-compose run webserver pytest dags -v` (assuming you have already run `$ docker-compose build`).
+`
