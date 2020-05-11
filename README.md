@@ -36,7 +36,7 @@ So, I did build a web scraping pipeline with Airflow that scales the number of s
 
 Instead, my final project implements and showcases a new operator --  `PythonIdempatomicFileOperator` (or, as I like to call it, the `PythonYoshiOperator`) -- and paradigm in Airflow that provides a solution to the above "problems" in a user-friendly way, keeping the flexibility (and scalability, testability, and the UI!) of Airflow while adding some of the conveniences/cleanliness of Luigi. 
 
-Below are my powerpoint presentation and videos which give varying levels of insight into my project and results. I had a lot to discuss so I separated the Intro to Airflow/Motivation parts for my project into an "Intro Video" in case you need more context, but the preface video should not be required to understand what I'm doing in the "real" project video. 
+Below are my powerpoint presentation and videos which give varying levels of insight into my project and results. I had a lot to discuss so I separated the Intro to Airflow/Motivation parts for my project into an "Intro Video" in case you need more context, but the preface video should not be required to understand what I'm doing in the "real" project video. Since I ended up implementing a "salted dag" workflow, I also added a demonstration video of the `jail_scraper_dag` (without any actual scraping) using the new P`ythonSaltedLocalOperator` `(I'm terrible at naming things).
 
 PowerPoint: [Final Project - Presentation.pdf](https://drive.google.com/open?id=1KWzkc_oH4y3ZZtKfdKIHQnIiEJXi9ey-)
 
@@ -338,6 +338,9 @@ package, so I just used the more straightforward approach. It is defined in my `
 
 #### The Future
 * Persist Airflow meta-db to AWS RDBS: This would allow increased mobility when deploying. Easily taking down and putting up DB without losing history.
+* I would like to implement functionality in the PythonIdempatomicFileOperator that shows skipped tasks as "Skipped" in the meta-db. This is easy to do for
+upstream and downstream tasks, but it is nontrivial to set the status while the operator is running. I found a way using the AirflowSkipException, but it didn't push the 
+ logs to the webserver (since the Operator execution is interrupted).
 * Deploy on AWS and scale to cluster using Airflow's CeleryExecutor
 * Django webapp for results hosted on Just City's website
 * API to give national stakeholders access to good, clean data from one of the epicenters of criminal justice misuse
@@ -353,7 +356,7 @@ to the "salted case" also), but in the near future, since I'm the only user, a s
 warning is sufficient. 
 * I'll probably change the fact that PythonIdempatomicFileOperator always returns the file path. 
 I thought it was clever at the time, but it would be better to let people return whatever they want
-and push the output_path to Xcom separately.
+and push the output_path to Xcom explicitly/separately.
 
 ## Testing
 In order to execute tests on the DAG, PythonIdempatomicOperator, and requires(), simply run
