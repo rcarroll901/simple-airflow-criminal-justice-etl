@@ -25,6 +25,8 @@ Intro Video (Optional): [Final Project - Intro to Airflow and Context.mp4](https
 
 Overview Video: [Final Project - Overview.mp4](https://drive.google.com/open?id=1-oNeSJOUFifrcbP0DT5zhbx50xvYqQLM)
 
+Salted Workflow: [Final Project - Airflow Salted Dag Demo](https://drive.google.com/file/d/1NCba2v2u3mYdKWAANYTHeYgOoQWJZXER/view?usp=sharing)
+
 
 
 ## PythonIdempatomicFileOperator
@@ -129,7 +131,7 @@ my_second_task = PythonIdempatomicFileOperator(task_id='task_2',
 ```
 
 
-Important notes:
+Important Notes:
 * requires does not bring search through directories recursively, so it will only return the files
 in that directory. Although, it will also have a key for any directories inside that directory.
 * alluded to above, requires uses Xcom to grab the information that is returned from an Operator. 
@@ -144,6 +146,8 @@ simply just not "returned".
 **source code:** `airflow/dags/submodules/salted_operator.py`
 
 **sandbox dag:** `airflow/dags/salted_dag.py`
+
+**demo:** [Airflow Salted Dag Workflow Demonstration](https://drive.google.com/file/d/1NCba2v2u3mYdKWAANYTHeYgOoQWJZXER/view?usp=sharing)
 
 After completing the assignment, I decided to give an hour to building a `PythonSaltedLocalOperator`
 (I'm terrible at naming things) as a child class of `PythonIdempatomicFileOperator` with a lot of
@@ -166,7 +170,8 @@ So, all we had to add was a `@version` decorator to our python callable and add 
 `output_pattern` template for the salt to be placed. The salt detects changes in the kwargs and the version
 and passes that information downstream using Xcom. Xcom acts kind of like the cache which Prof Gorlin
 mentioned in class, allowing our computation to be O(N) vs O(N^2) since finding the salt does not 
-need to be defined recursively. We can just simply grab the salt for each task from the meta-database.
+need to be defined recursively (even though caching in DB probably increases the amount of time 
+overall). We can just simply grab the salt for each task from the meta-database.
 
 I also added a `example_salted_dag` DAG into `airflow/dags/salted-dag.py` which is basically a 
 hollowed out version of the criminal justice scraping dag (i.e. all the logic from the actual tasks
@@ -257,7 +262,7 @@ I also want the ability to scale the number of concurrent workers dynamically in
 the load on the website when it is unnecessary and to increase the load when I'm worried the 
 scrapers will not have enough time to finish the job. I decided to change directions to focus on 
 the new operator before I implemented this feature. The current DAG is dynamic in structure, but the concurrency
-is defined at the instantiation of the DAG, meaning that it cannot be changed after the DAG runs.
+is defined at the instantiation of the DAG, meaning that it cannot be changed while the DAG is running.
 To mitigate this, I will use a SubDagOperator to scale the `odyssey_scraper` tasks which will 
 allow me to set the concurrency when those dynamic scraping tasks are kicked off, and I am confident
 that it will work straightforwardly. 
@@ -327,3 +332,6 @@ our idempotent operator, then a DAG re-run would rerun the upstream task but not
 operator. This could be solved with a "signature" as Prof Gorlin described in class (and could be applied
 to the "salted case" also), but in the near future, since I'm the only user, a simple (but loud) 
 warning is sufficient. 
+* I'll probably change the fact that PythonIdempatomicFileOperator always returns the file path. 
+I thought it was clever at the time, but it would be better to let people return whatever they want
+and push the output_path to Xcom separately.
