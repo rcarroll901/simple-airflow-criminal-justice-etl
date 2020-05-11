@@ -1,5 +1,24 @@
 # airflow_cj_report_card
 
+Table of Contents
+=================
+
+   * [airflow_cj_report_card](#airflow_cj_report_card)
+      * [Motivation](#motivation)
+      * [PythonIdempatomicFileOperator](#pythonidempatomicfileoperator)
+      * [requires()](#requires)
+      * [PythonSaltedLocalOperator and a Salted DAG](#salted-dags)
+      * [Implementation of PythonIdempatomicFileOperator](#implementation-of-pythonidempatomicfileoperator)
+        * [Mini-Criminal Justice Scraping Pipeline](#mini-criminal-justice-scraping-pipeline)
+        * [Preface](#preface)
+        * [Data](#data)
+        * [Setup](#setup)
+        * [About the DAG](#about-the-dag)
+        * [Deployment](#deployment)
+        * [Other](#other)
+        * [The Future](#the-future)
+      * [Testing](#testing)
+      
 ## Motivation
 
 My final project relates to a project that I've been working toward for [Just City](https://justcity.org/), a local criminal justice reform organization in Memphis, TN. I've been scraping very granular jail and criminal history data for a while now, and when I started my project, I planned to use Airflow to pull together this big pipeline and do the (quite annoying) order of operations required to get a properly normalized, queryable DB structure. But after working with Airflow for a while, I realized something:
@@ -38,7 +57,7 @@ Salted Workflow: [Final Project - Airflow Salted Dag Demo](https://drive.google.
 From the user experience, implementing the `PythonIdempatomicFileOperator` is almost identical to 
 implementing the plain `PythonOperator`:
 
-#### PythonOperator:
+**PythonOperator:**
 ```python
 def task():
     return 'Completed'
@@ -59,7 +78,7 @@ To implement this operator, we simply add two things to the above paradigm:
 1. Add `output_pattern` kwarg to the Operator instantiation
 2. Add `output_path` arg to the python_callable
 
-#### PythonIdempatomicFileOperator:
+**PythonIdempatomicFileOperator:**
 ```python
 def task(output_path):
     create_my_files(output_path) # creates file_1.csv and file_2.csv in /foo/bar/ directory
@@ -77,7 +96,7 @@ both atomicity and idempotency automatically. For more details on how this was i
 see the PowerPoint linked above which goes into the source code and also draws a side-by-side
 comparison of the hardcoded way of implementing these concepts. 
 
-#### Important Notes:
+**Important Notes:**
 * Directories must always include an ending `/` or `\` (depending on operatin system) to designate
 that it is not just a file without an extension.
 * When a task is skipped, it is not highlighted as Pink in Airflow's UI. It is still considered a 
@@ -141,7 +160,7 @@ status logs, I felt comfortable overwriting the user's ability to return their o
 return value from the python_callable is still logged in the PythonIdempatomicFileOperator. It is 
 simply just not "returned".
 
-## Salted DAGs
+## PythonSaltedLocalOperator and a Salted DAG
 
 **source code:** `airflow/dags/submodules/salted_operator.py`
 
@@ -189,9 +208,9 @@ in the menu on the right side to officially trigger it. It will probably throw a
 `jail_scraper_dag.py` out of your forked repo if it prevents you from running the example dag independently.
 
 
-## Implementation of PythonIdempatomicFileOperator:
+## Implementation of PythonIdempatomicFileOperator
 
-### Mini-Criminal Justice Scraping Pipeline
+#### Mini-Criminal Justice Scraping Pipeline
 
 **source code:** `airflow/dags/jail_scraper_dag.py`
 
@@ -213,7 +232,7 @@ against any of the people incarcerated. I am happy to invite you as a collaborat
 so that you can run this pipeline as long as you promise not to misuse it (and as long as you promise
 not to judge how ugly the code is. They are relics from a long time ago.)
 
-#### Data:
+#### Data
 * [Jail Population Data](https://imljail.shelbycountytn.gov/IML): Just hit search without putting
 anything in the query.
 * [Criminal History Data](https://odysseyidentityprovider.tylerhost.net/idp/account/signin?ReturnUrl=%2fidp%2fissue%2fwsfed%3fwa%3dwsignin1.0%26wtrealm%3dhttps%253a%252f%252fcjs.shelbycountytn.gov%252fCJS%252f%26wctx%3drm%253d0%2526id%253dpassive%2526ru%253d%25252fCJS%25252fAccount%25252fLogin%26wct%3d2019-04-10T16%253a27%253a35Z%26wauth%3durn%253a74&wa=wsignin1.0&wtrealm=https%3a%2f%2fcjs.shelbycountytn.gov%2fCJS%2f&wctx=rm%3d0%26id%3dpassive%26ru%3d%252fCJS%252fAccount%252fLogin&wct=2019-04-10T16%3a27%3a35Z&wauth=urn%3a74):
