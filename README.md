@@ -75,8 +75,8 @@ can lead to inconsistencies downstream. Therefore, in my data science workflows,
 nd idempotency to be built in. 
 
 To implement this operator, we simply add two things to the above paradigm:
-1. Add `output_pattern` kwarg to the Operator instantiation
-2. Add `output_path` arg to the python_callable
+1. Add `output_pattern` kwarg to the operator instantiation
+2. Add `output_path` arg to the definition of the python callable
 
 **PythonIdempatomicFileOperator:**
 ```python
@@ -90,16 +90,16 @@ my_task = PythonIdempatomicFileOperator(task_id='task_1',
                                         dag = dag)
 ```
 
-With adding an `output_path` argument to our task  and the `output_pattern` argument to our Operatore 
-(which will be passed to the `output_path` argument in `task` automatically by our Operator), we gain
+With adding an `output_path` argument to our task  and the `output_pattern` argument to our operator 
+(which will be passed to the `output_path` argument in `task` automatically by our operator), we gain
 both atomicity and idempotency automatically. For more details on how this was implemented, please 
 see the PowerPoint linked above which goes into the source code and also draws a side-by-side
 comparison of the hardcoded way of implementing these concepts. 
 
 **Important Notes:**
-* Directories must always include an ending `/` or `\` (depending on operatin system) to designate
+* Directories must always include an ending `/` or `\` (depending on operating system) to designate
 that it is not just a file without an extension.
-* When a task is skipped, it is not highlighted as Pink in Airflow's UI. It is still considered a 
+* When a task is skipped, it is not highlighted pink in Airflow's UI. It is still considered a 
 successful run and is therefore returned as a success.
 * Both creating/writing to directories and files are done atomically, regardless of means of creation.
 In other words, in task above, we can use `pandas.to_csv` to write the files and it will still ensure
@@ -129,7 +129,7 @@ from above and needs the files it creates. Then we can implement `requires` with
 to the above example:
 
 To implement `requires()`:
-1. Add `provide_context = True` kwarg to operator instantiation. This gives us access to Airflow metadata about dag.
+1. Add `provide_context = True` kwarg to operator instantiation. This gives us access to Airflow metadata about the DAG and "dagrun".
 2. Add `**kwargs` argument to python_callable. These kwargs are the metadata and are automatically put into the callable for us.
 
 ```python
@@ -137,7 +137,9 @@ def task_2(output_path, **kwargs): # kwargs are the metadata passed in from prov
 
     # and we just pass the kwargs through to requires
     req_files = requires('task_1', **kwargs) # returns {'file_1': '/foo/bar/file_1.csv', 'file_2': '/foo/bar/file_2.csv'}
-    file_1_path = req_files['file_1']
+    file_1_path = req_files['file_1'] # this is our file path to 'file_1.csv'
+    
+    # then with data pipeline
     df = pandas.read_csv(file_1_path)
     df.to_parquet(output_path)
     return 'Complete'
@@ -151,14 +153,14 @@ my_second_task = PythonIdempatomicFileOperator(task_id='task_2',
 
 
 Important Notes:
-* requires does not bring search through directories recursively, so it will only return the files
-in that directory. Although, it will also have a key for any directories inside that directory.
-* alluded to above, requires uses Xcom to grab the information that is returned from an Operator. 
-For PythonIdempatomicOperator, the output_path is *always* returned, regardless of what the return 
-statement in the python_callable returns. Since these return statements are usually just used for 
-status logs, I felt comfortable overwriting the user's ability to return their own messages, and the 
-return value from the python_callable is still logged in the PythonIdempatomicFileOperator. It is 
-simply just not "returned".
+* When given a task whose output path is a directory, `requires` does not search that directory recursively, 
+so it will only return the files and subdirectory names in that directory, but it will not include files in those subdirectories. 
+* Alluded to above, `requires` uses Xcom to grab the information that is returned from an operator. 
+For PythonIdempatomicOperator, the `output_path` is *always* returned and is pushed to Xcom, regardless of what the return 
+statement in the `python_callable` returns. Since these return statements are usually just used for 
+status logs, I felt comfortable overwriting the user's ability to return their own result. Although, the 
+return value from the python_callable that the user returns is still logged in the PythonIdempatomicFileOperator. 
+It is simply just not "returned" and pushed to Xcom.
 
 ## PythonSaltedLocalOperator and a Salted DAG
 
@@ -185,14 +187,14 @@ my_task = PythonSaltedLocalOperator(task_id='task_1',
                                         dag = dag)
 ```
 
-So, all we had to add was a `@version` decorator to our python callable and add a place in the
-`output_pattern` template for the salt to be placed. The salt detects changes in the kwargs and the version
-and passes that information downstream using Xcom. Xcom acts kind of like the cache which Prof Gorlin
+So, all we had to add was a `@version` decorator (imported from `salted_operator.py`) to our python callable and add a place in the
+`output_pattern` template for the salt to be placed. The salt detects changes in the kwargs and the version numbers,
+and then passes that information downstream using Xcom. Xcom acts kind of like the cache which Prof Gorlin
 mentioned in class, allowing our computation to be O(N) vs O(N^2) since finding the salt does not 
 need to be defined recursively (even though caching in DB probably increases the amount of time 
 overall). We can just simply grab the salt for each task from the meta-database.
 
-I also added a `example_salted_dag` DAG into `airflow/dags/salted-dag.py` which is basically a 
+I also added an `example_salted_dag` DAG into `airflow/dags/salted-dag.py` which is basically a 
 hollowed out version of the criminal justice scraping dag (i.e. all the logic from the actual tasks
 is removed. I mention in the criminal justice scraping section below that the user must download some
 private repos to test run the scraper. Since the task logic is hollowed out, this `example_salted_dag`
@@ -219,7 +221,7 @@ in the menu on the right side to officially trigger it. It will probably throw a
 #### Preface
 
 **Goal:** Get criminal history information on people who are incarcerated pretrial in Shelby County, TN. 
-First, we want to scrape the jail population, and then use their name and dob to search them in the
+First, we want to scrape the jail population, and then use their name and DOB to search them in the
 larger database which includes all past court cases (that haven't been expunged).
 
 **Why:** I am going to take this data and implement a django web app which visualizes various stats about 
