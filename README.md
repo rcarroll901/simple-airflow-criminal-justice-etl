@@ -337,6 +337,12 @@ directories. The idea of using a directory did not seem to mesh with inheriting 
 package, so I just used the more straightforward approach. It is defined in my `csci-utils`.
 
 #### The Future
+* In the `jail_scraper_dag`, the `output_path` is generated dynamically with the current date at runtime. This date should be
+taken as a parameter-like variable so that the data is appropriately labeled if data loading/scraping takes until the next day (Great question on the midterm!).
+* `requires()` needs to take into account the salt of the path when it references a task that produces a file, in the sense that, if I want to get the file 
+`foo/bar/cases-lb42d4.csv` produced by 'cases_task' then I want to make sure it can be referenced by `cases_file = requires('cases_task', **kwargs)['cases']` 
+and not `cases_file = requires('cases_task', **kwargs)['cases-lb42d4']` (which is what it
+would currently require). This is only a problem with the case of a file though. The directory case works fine since the salt is applied to the dir and not the files within.
 * Persist Airflow meta-db to AWS RDBS: This would allow increased mobility when deploying. Easily taking down and putting up DB without losing history.
 * I would like to implement functionality in the PythonIdempatomicFileOperator that shows skipped tasks as "Skipped" in the meta-db. This is easy to do for
 upstream and downstream tasks, but it is nontrivial to set the status while the operator is running. I found a way using the AirflowSkipException, but it didn't push the 
