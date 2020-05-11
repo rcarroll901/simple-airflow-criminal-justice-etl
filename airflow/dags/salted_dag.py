@@ -1,10 +1,6 @@
 # standard library
 import datetime as dt
-from datetime import datetime
 import os
-import math
-import csv
-import logging
 
 # external dependencies
 from airflow import DAG
@@ -13,9 +9,6 @@ from airflow.models import Variable
 
 # custom packages
 from submodules.salted_operator import PythonSaltedLocalOperator, version
-from submodules.task import requires
-from jail_scraper.airflow_scraper import main as scrape_jail_website
-from odyssey_scraper.smartsearch import SmartSearchScraper
 
 
 @version("0.1.0")
@@ -44,7 +37,7 @@ def upload_data():
 default_args = {
     "owner": "airflow",
     "start_date": dt.datetime(2020, 4, 30, 16, 00, 00),
-    "concurrency": int(Variable.get("concurrency", default_var=1)),
+    "concurrency": os.cpu_count() - 1,
     "retries": 0,
 }
 
@@ -72,7 +65,7 @@ upload = PythonOperator(task_id="upload_data", python_callable=upload_data, dag=
 
 
 # pull the variable from Airflow (which was set in previous task)
-# wrapping this in a subdag operator will be best moving forward and allows us to adjust the
+# wrapping this in a SubDagOperator will be best moving forward and allows us to adjust the
 # concurrency of these scrapers mid-dag_run. Without SubDagOperator, we cannot control concurrency
 # after the dag is instantiated
 num_tasks = int(Variable.get("num_odyssey_scraping_tasks", default_var=3))
