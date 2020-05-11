@@ -9,13 +9,11 @@ from airflow.exceptions import AirflowSkipException
 
 class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
     """
-
     Executes a Python callable which creates a file or directory such that
 
     (1) If the file or dir already exists, the python_callable is skipped.
 
     (2) The creation is atomic, in that, if writing or creation is not completed, the partial file or dir will be cleaned up.
-
 
     :param python_callable: A reference to an object that is callable
     :type python_callable: python callable which must take 'output_path' as a parameter
@@ -116,8 +114,7 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
 
     def execute(self, context):
         self.output_path = self.get_file_path()
-        self.log.info("DOES REAL FILE EXIST: " + str(os.path.exists(self.output_path)))
-        self.log.info("DOES REAL FILE EXIST: " + self.output_path)
+        self.log.info("Output file exists: " + str(os.path.exists(self.output_path)))
         # if file exists already, then task has been completed and skip execution and log
         if os.path.exists(self.output_path):
             self.log.info(
@@ -131,7 +128,6 @@ class PythonIdempatomicFileOperator(PythonOperator, SkipMixin):
             self.previously_completed = False
             log_value = super().execute(context)
         self.log.info("Done. Returned value was: %s", log_value)
-        self.log.info("DOES REAL EXIST: " + str(os.path.exists(self.output_path)))
         return (
             self.output_path
         )  # return output_path *always* so it will be logged in Xcom automatic
