@@ -38,7 +38,7 @@ Salted Workflow: [Final Project - Airflow Salted Dag Demo](https://drive.google.
 From the user experience, implementing the `PythonIdempatomicFileOperator` is almost identical to 
 implementing the plain `PythonOperator`:
 
-PythonOperator:
+#### PythonOperator:
 ```python
 def task():
     return 'Completed'
@@ -59,7 +59,7 @@ To implement this operator, we simply add two things to the above paradigm:
 1. Add `output_pattern` kwarg to the Operator instantiation
 2. Add `output_path` arg to the python_callable
 
-PythonIdempatomicFileOperator:
+#### PythonIdempatomicFileOperator:
 ```python
 def task(output_path):
     create_my_files(output_path) # creates file_1.csv and file_2.csv in /foo/bar/ directory
@@ -75,9 +75,9 @@ With adding an `output_path` argument to our task  and the `output_pattern` argu
 (which will be passed to the `output_path` argument in `task` automatically by our Operator), we gain
 both atomicity and idempotency automatically. For more details on how this was implemented, please 
 see the PowerPoint linked above which goes into the source code and also draws a side-by-side
-comparison of the hardcoded way of implementing these concepts 
+comparison of the hardcoded way of implementing these concepts. 
 
-Important Notes:
+#### Important Notes:
 * Directories must always include an ending `/` or `\` (depending on operatin system) to designate
 that it is not just a file without an extension.
 * When a task is skipped, it is not highlighted as Pink in Airflow's UI. It is still considered a 
@@ -335,3 +335,8 @@ warning is sufficient.
 * I'll probably change the fact that PythonIdempatomicFileOperator always returns the file path. 
 I thought it was clever at the time, but it would be better to let people return whatever they want
 and push the output_path to Xcom separately.
+
+## Testing
+In order to execute tests on the DAG, PythonIdempatomicOperator, and requires(), simply run
+`$ docker-compose run webserver pytest dags -v` (assuming you have already run `$ docker-compose build`).
+`
