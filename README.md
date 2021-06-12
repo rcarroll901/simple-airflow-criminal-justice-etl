@@ -8,7 +8,7 @@ Table of Contents
       * [Motivation](#motivation)
       * [PythonIdempatomicFileOperator](#pythonidempatomicfileoperator)
       * [requires()](#requires)
-      * [PythonSaltedLocalOperator and a Salted DAG](#salted-dags)
+      * [PythonSaltedLocalOperator and a Salted DAG](#pythonsaltedlocaloperator-and-a-salted-dag)
    * [Implementation of PythonIdempatomicFileOperator](#implementation-of-pythonidempatomicfileoperator)
         * [Mini-Criminal Justice Scraping Pipeline](#mini-criminal-justice-scraping-pipeline)
         * [Preface](#preface)
@@ -44,13 +44,13 @@ This repo contains a few extensions of Apache Airflow to add some of my favorite
 
 Below are my powerpoint presentation and videos which give varying levels of insight into this project and results:
 
-PowerPoint: [Presentation.pdf](https://drive.google.com/open?id=1KWzkc_oH4y3ZZtKfdKIHQnIiEJXi9ey-)
+* PowerPoint: [Presentation.pdf](https://drive.google.com/open?id=1KWzkc_oH4y3ZZtKfdKIHQnIiEJXi9ey-)
 
-Intro Video (Optional): [Intro to Airflow and Context.mp4](https://drive.google.com/open?id=1DybmV_X64INPTUr6kPCcA9N7a1EOfzAe)
+* Intro Video (Optional): [Intro to Airflow and Context.mp4](https://drive.google.com/open?id=1DybmV_X64INPTUr6kPCcA9N7a1EOfzAe)
 
-Overview Video: [Overview.mp4](https://drive.google.com/open?id=1-oNeSJOUFifrcbP0DT5zhbx50xvYqQLM)
+* Overview Video: [Overview.mp4](https://drive.google.com/open?id=1-oNeSJOUFifrcbP0DT5zhbx50xvYqQLM)
 
-Salted Workflow: [Airflow Salted Dag Demo](https://drive.google.com/file/d/1NCba2v2u3mYdKWAANYTHeYgOoQWJZXER/view?usp=sharing)
+* Salted Workflow: [Airflow Salted Dag Demo](https://drive.google.com/file/d/1NCba2v2u3mYdKWAANYTHeYgOoQWJZXER/view?usp=sharing)
 
 
 
