@@ -1,5 +1,6 @@
-# airflow_cj_report_card
+# Criminal Justice ETL (+ Extending Apache Airflow)
 
+___
 Table of Contents
 =================
 
@@ -21,30 +22,35 @@ Table of Contents
       
 ## Motivation
 
-My final project relates to a project that I've been working toward for [Just City](https://justcity.org/), a local criminal justice reform organization in Memphis, TN. I've been scraping very granular jail and criminal history data for a while now, and when I started my project, I planned to use Airflow to pull together this big pipeline and do the (quite annoying) order of operations required to get a properly normalized, queryable DB structure. But after working with Airflow for a while, I realized something:
+This repository is a simplfied version of a project that I've been working toward for [Just City](https://justcity.org/), a local criminal justice reform organization in Memphis, TN. I've been scraping very granular jail and criminal history data for a while now, and when I started my project, I planned to use Airflow to pull together this big pipeline and do the (quite annoying) order of operations required to get a properly normalized, queryable DB structure. But after working with Airflow for a while, I realized something:
 
 I don't like Airflow. 
 
-At least, I should say that I don't like a few specific (lack of) features. In particular, focusing on the `PythonOperator`, each task is almost always a plain old python function which causes us to lose a lot of the nice, clean functionality that Luigi's class-based tasks gave us. 
+At least, I should say that I don't like a few specific (lack of) features. In particular, focusing on the `PythonOperator`, tasks in all the Aiflow docs and exmaples are almost always a plain old python function which causes us to lose a lot of the nice, clean (but also rigid/opinionated) functionality that Luigi gave us. 
 
 For example:
 1. **Inter-Task Communication:** It was really nice that we could refer to a task by name and grab the `output().path` to get the data and continue the pipeline without having to remember the exact (and probably dynamic) path of that output. In Airflow, if you want to read an output file of another task out of the box, you have to hardcode that into the task or do some ugly logic to automate it. If that output path changes, you will most likely have to manually change all of the references to that file throughout other tasks. 
 2. **Idempotency:** While it did have its downfalls (which were mostly resolved with the "salted graph" paradigm), the fact that Luigi automatically knew not to re-run a task if the output already existed was very useful, especially if you are running a scraper that takes 20 minutes to 5 hours.
 3. **Atomicity:** As we learned, this is an incredibly important part of our workflow. If one file is partially made and goes into production, it can corrupt our data in a way that is very difficult to notice or retroactively fix. Airflow does not provide any functionality that ensures atomicity in the outputs of the tasks. In fact, in the documentation, Airflow even says that operators are "usually (but not always) atomic", but they mean "[operators] can stand on their own and don’t need to share resources with any other operators" -- not *actually* atomic in the way that we want.
 
-So, I did build a web scraping pipeline with Airflow that scales the number of scraping tasks (i.e. changes the actual DAG structure) dynamically depending on the result of an upstream task, but, while useful, that is no longer my focus. 
+We could (and, in hindsight, should....) copy the class/method-based tasks format of Luigi, but at the time, I liked the cleanliness of using plain python functions and decided to extend it in this more basic form. Also, I'm **100% certain** that there are more clever and potentially obvious ways using only Apache Airflow features out of the box to accomplish all of these things, but I was excited to dig in and implement my own attempt in the name of problem solving and curiosity.
 
-Instead, my final project implements and showcases a new operator --  `PythonIdempatomicFileOperator` (or, as I like to call it, the `PythonYoshiOperator`) -- and paradigm in Airflow that provides a solution to the above "problems" in a user-friendly way, keeping the flexibility (and scalability, testability, and the UI!) of Airflow while adding some of the conveniences/cleanliness of Luigi. 
+This repo contains a few extensions of Apache Airflow to add some of my favorite Luigi "opinions":
 
-Below are my powerpoint presentation and videos which give varying levels of insight into my project and results. I had a lot to discuss so I separated the Intro to Airflow/Motivation parts for my project into an "Intro Video" in case you need more context, but the preface video should not be required to understand what I'm doing in the "real" project video. Since I ended up implementing a "salted dag" workflow, I also added a demonstration video of the `jail_scraper_dag` (without any actual scraping) using the new P`ythonSaltedLocalOperator` `(I'm terrible at naming things).
+* Change the DAG dynamically depending on the result of an upstream task. Around the time that this repo was created and written, the `SubDagOperator` did not meet my usecase due to the differences in scheduling the dag/subdag but, with developments since that time, is now the clearly superior route for my usecase
+* Implements and showcases a new operator --  `PythonIdempatomicFileOperator` (or, as I like to call it, the `PythonYoshiOperator`) -- and paradigm in Airflow that provides a solution to the above "problems" in a user-friendly way, keeping the flexibility (and scalability, testability, and the UI!) of Airflow while adding some of the conveniences/cleanliness of Luigi. 
+* Implements and showcases a function  -- `requires()` -- to communicate upstream file dependency locations to downstream tasks using Airflow's Xcom feature. As mentioned above, Airflow tasks are supposed to be "atomic" in the sense that they stand alone, but what if the upstream task changes the location of the output file? We then have a tight coupling of the tasks and we have to manually change the downstream code to look in that new location.
+* Implements and showcases an extension of the above oeprator called the `PythonSaltedLocalOperator` which detects changes in nodes of the DAG via an explicit `@version` decorator on the executables + an imlicit detection of changed paramters in the Task definitions. Since I ended up implementing a "salted dag" workflow, I also added a demonstration video of the `jail_scraper_dag` (without any actual scraping) using this operator.
 
-PowerPoint: [Final Project - Presentation.pdf](https://drive.google.com/open?id=1KWzkc_oH4y3ZZtKfdKIHQnIiEJXi9ey-)
+Below are my powerpoint presentation and videos which give varying levels of insight into this project and results:
 
-Intro Video (Optional): [Final Project - Intro to Airflow and Context.mp4](https://drive.google.com/open?id=1DybmV_X64INPTUr6kPCcA9N7a1EOfzAe)
+PowerPoint: [Presentation.pdf](https://drive.google.com/open?id=1KWzkc_oH4y3ZZtKfdKIHQnIiEJXi9ey-)
 
-Overview Video: [Final Project - Overview.mp4](https://drive.google.com/open?id=1-oNeSJOUFifrcbP0DT5zhbx50xvYqQLM)
+Intro Video (Optional): [Intro to Airflow and Context.mp4](https://drive.google.com/open?id=1DybmV_X64INPTUr6kPCcA9N7a1EOfzAe)
 
-Salted Workflow: [Final Project - Airflow Salted Dag Demo](https://drive.google.com/file/d/1NCba2v2u3mYdKWAANYTHeYgOoQWJZXER/view?usp=sharing)
+Overview Video: [Overview.mp4](https://drive.google.com/open?id=1-oNeSJOUFifrcbP0DT5zhbx50xvYqQLM)
+
+Salted Workflow: [Airflow Salted Dag Demo](https://drive.google.com/file/d/1NCba2v2u3mYdKWAANYTHeYgOoQWJZXER/view?usp=sharing)
 
 
 
