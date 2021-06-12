@@ -4,12 +4,12 @@ ___
 Table of Contents
 =================
 
-   * [airflow_cj_report_card](#airflow_cj_report_card)
+   * [Extending Apache Airflow](#criminal-justice-etl--extending-apache-airflow)
       * [Motivation](#motivation)
       * [PythonIdempatomicFileOperator](#pythonidempatomicfileoperator)
       * [requires()](#requires)
       * [PythonSaltedLocalOperator and a Salted DAG](#salted-dags)
-      * [Implementation of PythonIdempatomicFileOperator](#implementation-of-pythonidempatomicfileoperator)
+   * [Implementation of PythonIdempatomicFileOperator](#implementation-of-pythonidempatomicfileoperator)
         * [Mini-Criminal Justice Scraping Pipeline](#mini-criminal-justice-scraping-pipeline)
         * [Preface](#preface)
         * [Data](#data)
@@ -18,7 +18,7 @@ Table of Contents
         * [Deployment](#deployment)
         * [Other](#other)
         * [The Future](#the-future)
-      * [Testing](#testing)
+   * [Testing](#testing)
       
 ## Motivation
 
