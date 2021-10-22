@@ -176,7 +176,7 @@ It is simply just not "returned" and pushed to Xcom.
 
 **demo:** [Airflow Salted Dag Workflow Demonstration](https://drive.google.com/file/d/1NCba2v2u3mYdKWAANYTHeYgOoQWJZXER/view?usp=sharing)
 
-After completing the assignment, I decided to give an hour to building a `PythonSaltedLocalOperator`
+After completing the extended operator, I decided to give an hour to building a `PythonSaltedLocalOperator`
 (I'm terrible at naming things) as a child class of `PythonIdempatomicFileOperator` with a lot of
  success. Compared to the above examples, it looks like this:
 
@@ -195,8 +195,7 @@ my_task = PythonSaltedLocalOperator(task_id='task_1',
 
 So, all we had to add was a `@version` decorator (imported from `salted_operator.py`) to our python callable and add a place in the
 `output_pattern` template for the salt to be placed. The salt detects changes in the kwargs and the version numbers,
-and then passes that information downstream using Xcom. Xcom acts kind of like the cache which Prof Gorlin
-mentioned in class, allowing our computation to be O(N) vs O(N^2) since finding the salt does not 
+and then passes that information downstream using Xcom. Xcom acts kind of like the cache allowing our computation to be O(N) vs O(N^2) since finding the salt does not 
 need to be defined recursively (even though caching in DB probably increases the amount of time 
 overall). We can just simply grab the salt for each task from the meta-database.
 
@@ -365,7 +364,7 @@ leverage looking for an extension for better detection (or just simply a warning
 * Add a warning such that, if PythonIdempatomicFileOperator detects an not-explicitly-idempotent/atomic
 operator upstream, it throws a warning to the user. If a non-idempotent operator is upstream from 
 our idempotent operator, then a DAG re-run would rerun the upstream task but not re-reun the idempotent 
-operator. This could be solved with a "signature" as Prof Gorlin described in class (and could be applied
+operator. This could be solved with a "signature"(and could be applied
 to the "salted case" also), but in the near future, since I'm the only user, a simple (but loud) 
 warning is sufficient. 
 * I'll probably change the fact that PythonIdempatomicFileOperator always returns the file path. 
